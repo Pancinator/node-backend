@@ -6,29 +6,12 @@ const Joi = require('joi');
 const formidable = require('formidable');
 const { date } = require('joi');
 const { parse } = require('path');
-const { response } = require('express');
-//const async = require('async')
+// util method for creating promises from standard functions
 const { promisify } = require('util')
-
 const readdir = promisify(require('fs').readdir)
-
+const { getNow, validateGalleryCreation, getPictureFromDir } = require('./support')
 
 const gallery = express.Router()
-
-function getPictureFromDir(file){
-    return new Promise((resolve,reject) => {
-        fs.readdir(file, (err, files) =>{
-
-        if (err) return console.log(err)
-        if (files.length > 0){
-            console.log('returned file', files[0])
-            resolve(files[0])
-            
-        } else reject(null)
-    });
-})
-}
-
 
 gallery.get('', async (req, res) => {
     console.log('start')
@@ -120,27 +103,5 @@ gallery.post('', json(), (req, res) => {
     }
     
 })
-
-// validation function
-function validateGalleryCreation(req){
-    const schema = Joi.object({
-        name: Joi.string().invalid('/').required().min(3)
-    })
-
-    if (!req.body.name.includes('/')){
-        return schema.validate({ name: `${req.body.name}`});
-    } else {
-        req.body.name = '/'
-        return schema.validate({ name: `${req.body.name}`});
-    }
-}
-
-function getNow(){
-    const today = new Date();
-    const date = today.getFullYear()+'-'+(today.getMonth()+1)+'-'+today.getDate();
-    const time = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
-    const dateTime = date+' '+time;
-    return dateTime
-}
 
 module.exports = gallery
