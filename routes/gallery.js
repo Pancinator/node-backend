@@ -6,33 +6,33 @@ const Joi = require('joi');
 
 const gallery = express.Router()
 
-gallery.use((req, res, next) => {
-    console.log('routing')
-    next()
-})
-
-
 gallery.get('/hello', (req, res) => {
     res.send('hello')
 })
 
-gallery.post('', json(),(req, res) => {
-    console.log(req.body)
-    let result = validateGalleryCreation(req)
-    if (!result.error) {
-        fs.mkdir(`./public/${req.body.name}`, (err) => {
-            if (err) {
-                return console.error(err)
+// POST method for creating new gallery directory
+gallery.post('', json(), (req, res) => {
+    let { error } = validateGalleryCreation(req)
+    const galleryName = req.body.name
+
+    if (error == undefined) {
+        let encoded = encodeURI(galleryName)
+        fs.mkdir(`./public/${encoded}`, (err) => {
+            if (err && err.code === 'EEXIST') {
+                res.status(409).send(err)
+                return
             } else {
-                return console.log('created successguly')
+                res.setHeader('Content-Type', 'application/json');
+                res.status(201).send(JSON.stringify({ 
+                    "name": `${galleryName}`,
+                    "path": `${encoded}`  
+                }))
+                res.end()
+                return
             }
         })
-        res.setHeader('Content-Type', 'application/json');
-        res.status(201).send(JSON.stringify({ "name": `${req.body.name}`}))
-        res.end()
-        return
     } else {
-        res.status(400).send(result.error.details[0])
+        res.status(400).send(error.details[0].message)
     }
     
 })
@@ -40,10 +40,15 @@ gallery.post('', json(),(req, res) => {
 // validation function
 function validateGalleryCreation(req){
     const schema = Joi.object({
-        name: Joi.string().invalid('/').required()
+        name: Joi.string().invalid('/').required().min(3)
     })
-    console.log(schema.validate({ name: `${req.body.name}`}))
-    return schema.validate({ name: `${req.body.name}`});
+
+    if (!req.body.name.includes('/')){
+        return schema.validate({ name: `${req.body.name}`});
+    } else {
+        req.body.name = '/'
+        return schema.validate({ name: `${req.body.name}`});
+    }
 };
 
 module.exports = gallery
