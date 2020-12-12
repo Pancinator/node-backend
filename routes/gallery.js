@@ -2,10 +2,7 @@ const { json } = require('body-parser');
 const express = require('express');
 const path = require('path');
 const fs = require("fs");
-const Joi = require('joi');
 const formidable = require('formidable');
-const { date } = require('joi');
-const { parse } = require('path');
 // util method for creating promises from standard functions
 const { promisify } = require('util')
 const readdir = promisify(require('fs').readdir)
@@ -14,12 +11,17 @@ const { getNow, validateGalleryCreation, getPictureFromDir } = require('./suppor
 const gallery = express.Router()
 
 gallery.get('', async (req, res) => {
-    console.log('start')
     const files = await readdir('./public')
     let response = { galleries: []}
+
     for (let file of files){
         p = path.join('./public', file)
-        const pict = await getPictureFromDir(p)
+        let pict = null
+        try {
+            pict = await getPictureFromDir(p)
+        } catch (error) {
+            console.log('logged err', error)
+        }
         if (pict != null){
             g = {
                 path: file,
@@ -39,15 +41,15 @@ gallery.get('', async (req, res) => {
         }
         response.galleries.push(g)
     }
-    console.log('finall response', response)
-    console.log('end')
     res.send(JSON.stringify(response))
 })       
+
 
 gallery.get('/hello', (req, res) => {
     res.send('hello')
 })
 
+// POST method for uploading a file 
 gallery.post('/:g', (req, res) => {
     let { g } = req.params
     const encodedGalleryName = encodeURI(g)
@@ -74,16 +76,52 @@ gallery.post('/:g', (req, res) => {
             }))
             return
         })
+
+        fs.chmod(newPath, 0o600, (err) => { 
+            console.log("Trying to write to file")
+            console.log(err)
+            return
+        })
     })
+})
+
+// GET method for getting all images from gallery
+gallery.get('/:p', async (req, res) => {
+    let { p } = req.params
+    const encodedGalleryName = encodeURI(p)
+    try {
+        const images = await readdir(path.join('./public', p))
+    } catch (error) {
+        return res.status(404).send('Zvolena galeria neexistuje')
+    }
+    
+    let gallery = { 
+        gallery: { 
+            path: encodedGalleryName,
+            name: p
+        },
+        images: []
+        }
+
+    for (let file of images){
+        let f = {
+            path: file,
+            fullpath: path.join('./public', file),
+            name: path.basename(file, path.extname(file)),
+            modified: getNow()
+        }
+        gallery.images.push(f)
+    }
+    res.status(200).send(JSON.stringify(gallery))
 })
 
 // POST method for creating new gallery directory
 gallery.post('', json(), (req, res) => {
     let { error } = validateGalleryCreation(req)
     const galleryName = req.body.name
-
+    let encoded = encodeURI(galleryName)
     if (error == undefined) {
-        let encoded = encodeURI(galleryName)
+        
         fs.mkdir(`./public/${encoded}`, (err) => {
             if (err && err.code === 'EEXIST') {
                 res.status(409).send(err)
@@ -100,6 +138,30 @@ gallery.post('', json(), (req, res) => {
         })
     } else {
         res.status(400).send(error.details[0].message)
+    }
+    fs.chmod(path.join('./public', encoded), 0o600, (err) => { 
+        console.log("Trying to write to file")
+        console.log(err)
+        return
+    })
+})
+
+// DELETE method for deletening an image or gallery
+gallery.delete('/:g', async (req, res) => {
+    const { g } = req.params
+    const galleryEncoded = encodeURI(g)
+    console.log(galleryEncoded)
+    console.log(path.join(__dirname, './public', galleryEncoded))
+    try {
+        fs.unlink(path.join('./public', galleryEncoded), (err) => {
+            if (err) {
+                return res.status(404).send(err)
+            } else {
+                res.status(200).send('Obrazok/galeria uspesne vymazana')
+            }
+        })
+    } catch (error) {
+        return res.status(500).send()
     }
     
 })

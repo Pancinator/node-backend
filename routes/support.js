@@ -1,5 +1,5 @@
 const fs = require("fs");
-
+const Joi = require('joi');
 
 // Promise function for getting title picture from gallery
  function getPictureFromDir(file){
@@ -7,11 +7,12 @@ const fs = require("fs");
       fs.readdir(file, (err, files) =>{
 
       if (err) return console.log(err)
+  
       if (files.length > 0){
-          console.log('returned file', files[0])
-          resolve(files[0])
-          
-      } else reject(null)
+          resolve(files[0])    
+      } else {
+        reject(files)
+      }
   });
 })
 }
