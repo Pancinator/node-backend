@@ -49,15 +49,6 @@ gallery.get('/hello', (req, res) => {
     res.send('hello')
 })
 
-gallery.get('/:g/:p', (req, res) => {
-    const root = 'C:/Users/Pancinator/Desktop/NODEjs/bart-backend/node-backend'
-    const { g, p } = req.params
-    const galleryEncoded = encodeURI(g)
-    const pictEncoded = encodeURI(p)
-    
-    res.status(200).sendFile(path.join(root, './public', galleryEncoded, pictEncoded))
-})
-
 // POST method for uploading a file 
 gallery.post('/:g', (req, res) => {
     let { g } = req.params
