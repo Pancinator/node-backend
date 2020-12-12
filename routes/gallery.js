@@ -3,10 +3,10 @@ const express = require('express');
 const path = require('path');
 const fs = require("fs");
 const formidable = require('formidable');
-// util method for creating promises from standard functions
 const { promisify } = require('util')
 const readdir = promisify(require('fs').readdir)
-const { getNow, validateGalleryCreation, getPictureFromDir } = require('./support')
+const { getNow, validateGalleryCreation, getPictureFromDir, deleteAllPictures } = require('./support')
+const unlink = promisify(require('fs').unlink)
 
 const gallery = express.Router()
 
@@ -47,6 +47,15 @@ gallery.get('', async (req, res) => {
 
 gallery.get('/hello', (req, res) => {
     res.send('hello')
+})
+
+gallery.get('/:g/:p', (req, res) => {
+    const root = 'C:/Users/Pancinator/Desktop/NODEjs/bart-backend/node-backend'
+    const { g, p } = req.params
+    const galleryEncoded = encodeURI(g)
+    const pictEncoded = encodeURI(p)
+    
+    res.status(200).sendFile(path.join(root, './public', galleryEncoded, pictEncoded))
 })
 
 // POST method for uploading a file 
@@ -146,14 +155,24 @@ gallery.post('', json(), (req, res) => {
     })
 })
 
-// DELETE method for deletening an image or gallery
+// DELETE method for deletening whole gallery
 gallery.delete('/:g', async (req, res) => {
     const { g } = req.params
     const galleryEncoded = encodeURI(g)
-    console.log(galleryEncoded)
-    console.log(path.join(__dirname, './public', galleryEncoded))
+    let result 
     try {
-        fs.unlink(path.join('./public', galleryEncoded), (err) => {
+        result = await deleteAllPictures(galleryEncoded)
+    } catch (error) {
+        console.log(error)
+    }
+    
+    if ( result == true){
+    } else {
+        res.status(404).send('Zvolena galeria neexistuje')
+    }
+
+    try {
+        fs.rmdir(path.join('./public', galleryEncoded), (err) => {
             if (err) {
                 return res.status(404).send(err)
             } else {
@@ -164,6 +183,22 @@ gallery.delete('/:g', async (req, res) => {
         return res.status(500).send()
     }
     
+})
+
+// DELTE method for deletening single picture
+gallery.delete('/:g/:p', async (req, res) => {
+    const { g, p } = req.params
+    const galleryEncoded = encodeURI(g)
+    const pictEncoded = encodeURI(p)
+
+    try {
+        await unlink(path.join('./public', galleryEncoded, pictEncoded))
+    } catch (error) {
+        console.log(error)
+        return res.status(404).send('Zvoleny obrazok neexistuje')
+    }
+    res.status(200).send('Obrazok vymazany')
+
 })
 
 module.exports = gallery

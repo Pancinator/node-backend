@@ -1,5 +1,9 @@
 const fs = require("fs");
 const Joi = require('joi');
+const path = require('path');
+const { promisify } = require('util')
+const readdir = promisify(require('fs').readdir)
+const unlink = promisify(require('fs').unlink)
 
 // Promise function for getting title picture from gallery
  function getPictureFromDir(file){
@@ -15,6 +19,28 @@ const Joi = require('joi');
       }
   });
 })
+}
+
+// this function return Promise of deletion of files in directory
+async function deleteAllPictures(gallery){
+
+    return new Promise(async (resolve, reject) => {
+        let images
+        try {
+            images = await readdir(path.join('./public', gallery))
+        } catch (error) {
+            reject(false)
+        }
+        
+        for (let img of images){
+            try {
+                await unlink(path.join('./public', gallery, img))
+            } catch (error) {
+                reject(console.log(error))
+            }
+        }
+        resolve(true)
+    })
 }
 
 // validation function
@@ -43,3 +69,4 @@ function getNow(){
 module.exports.getPictureFromDir = getPictureFromDir
 module.exports.validateGalleryCreation = validateGalleryCreation
 module.exports.getNow = getNow
+module.exports.deleteAllPictures = deleteAllPictures
