@@ -44,7 +44,6 @@ gallery.get('', async (req, res) => {
     res.send(JSON.stringify(response))
 })       
 
-
 gallery.get('/hello', (req, res) => {
     res.send('hello')
 })
@@ -89,9 +88,13 @@ gallery.post('/:g', (req, res) => {
 gallery.get('/:p', async (req, res) => {
     let { p } = req.params
     const encodedGalleryName = encodeURI(p)
+    console.log('checking', path.join('./public', encodedGalleryName))
+    let images = null
+
     try {
-        const images = await readdir(path.join('./public', p))
+        images = await readdir(path.join('./public', encodedGalleryName))
     } catch (error) {
+        console.log('THIS IS ERR', error)
         return res.status(404).send('Zvolena galeria neexistuje')
     }
     
@@ -103,14 +106,16 @@ gallery.get('/:p', async (req, res) => {
         images: []
         }
 
-    for (let file of images){
-        let f = {
-            path: file,
-            fullpath: path.join('./public', file),
-            name: path.basename(file, path.extname(file)),
-            modified: getNow()
+    if (images != null){
+        for (let file of images){
+            let f = {
+                path: file,
+                fullpath: path.join('./public', file),
+                name: path.basename(file, path.extname(file)),
+                modified: getNow()
+            }
+            gallery.images.push(f)
         }
-        gallery.images.push(f)
     }
     res.status(200).send(JSON.stringify(gallery))
 })
