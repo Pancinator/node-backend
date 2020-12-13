@@ -16,30 +16,32 @@ gallery.get('', async (req, res) => {
 
     for (let file of files){
         p = path.join('./public', file)
-        let pict = null
-        try {
-            pict = await getPictureFromDir(p)
-        } catch (error) {
-            console.log('logged err', error)
-        }
-        if (pict != null){
-            g = {
-                path: file,
-                name: decodeURI(file),
-                image: {
-                    path: pict,
-                    fullpath: path.join(p, pict),
-                    name: path.basename(path.join(p, pict), path.extname(pict)),
-                    modified: getNow()
-                } 
+        if (fs.lstatSync(p).isDirectory()){
+            let pict = null
+            try {
+                pict = await getPictureFromDir(p)
+            } catch (error) {
+                console.log('logged err', error)
             }
-        } else {
-            g = {
-                path: file,
-                name: decodeURI(file)
+            if (pict != null){
+                g = {
+                    path: file,
+                    name: decodeURI(file),
+                    image: {
+                        path: pict,
+                        fullpath: path.join(p, pict),
+                        name: path.basename(path.join(p, pict), path.extname(pict)),
+                        modified: getNow()
+                    } 
+                }
+            } else {
+                g = {
+                    path: file,
+                    name: decodeURI(file)
+                }
             }
+            response.galleries.push(g)
         }
-        response.galleries.push(g)
     }
     res.send(JSON.stringify(response))
 })       
@@ -89,8 +91,10 @@ gallery.post('/:g', (req, res) => {
 gallery.get('/:p', async (req, res) => {
     let { p } = req.params
     const encodedGalleryName = encodeURI(p)
+    let images = null
+
     try {
-        const images = await readdir(path.join('./public', p))
+        images = await readdir(path.join('./public', encodedGalleryName))
     } catch (error) {
         return res.status(404).send('Zvolena galeria neexistuje')
     }
@@ -101,16 +105,18 @@ gallery.get('/:p', async (req, res) => {
             name: p
         },
         images: []
-        }
+    }
 
-    for (let file of images){
-        let f = {
-            path: file,
-            fullpath: path.join('./public', file),
-            name: path.basename(file, path.extname(file)),
-            modified: getNow()
+    if (images != null){
+        for (let file of images){
+            let f = {
+                path: file,
+                fullpath: path.join('./public', file),
+                name: path.basename(file, path.extname(file)),
+                modified: getNow()
+            }
+            gallery.images.push(f)
         }
-        gallery.images.push(f)
     }
     res.status(200).send(JSON.stringify(gallery))
 })
